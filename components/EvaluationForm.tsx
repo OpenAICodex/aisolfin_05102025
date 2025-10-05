@@ -392,37 +392,38 @@ export default function EvaluationForm({ demoMode = false }: EvaluationFormProps
                 {/* Traffic light representation */}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="space-y-1">
-                    {[0, 1, 2, 3].map((idx) => {
-                      // Determine which light should be active based on the
-                      // AI Act status. The compliance API returns
-                      // 'ok' (minimal risk), 'warning' (limited/high risk) or 'violation'
-                      // (unlawful/illegal). We also handle legacy `ai_act_tier` values.
-                      let activeIndex = 3;
-                      let color = 'bg-green-500';
+                    {(() => {
+                      const trafficLights = [
+                        { label: 'Hohe Gefahr', color: 'bg-red-500' },
+                        { label: 'Beobachten', color: 'bg-yellow-400' },
+                        { label: 'Konform', color: 'bg-green-500' },
+                      ];
+
                       const status = (result.compliance as any).ai_act_status ?? (result.compliance as any).ai_act_tier;
+                      let activeIndex = 2; // Default to green/compliant
+
                       if (status && typeof status === 'string') {
                         const lower = status.toLowerCase();
-                        // Map the known AI Act statuses to traffic light colours. The
-                        // compliance API enumerates "ok" → green, "warning" → yellow
-                        // and "violation" → red. Unknown values default to green.
                         if (lower === 'violation') {
-                          activeIndex = 1;
-                          color = 'bg-red-500';
+                          activeIndex = 0;
                         } else if (lower === 'warning') {
-                          activeIndex = 2;
-                          color = 'bg-yellow-400';
+                          activeIndex = 1;
                         } else if (lower === 'ok') {
-                          activeIndex = 3;
-                          color = 'bg-green-500';
+                          activeIndex = 2;
                         }
                       }
-                      return (
-                        <div
-                          key={idx}
-                          className={`w-5 h-5 rounded-full border-2 border-black ${idx === activeIndex ? color : 'bg-gray-300'}`}
-                        ></div>
-                      );
-                    })}
+
+                      return trafficLights.map((light, idx) => (
+                        <div key={light.label} className="flex items-center gap-2">
+                          <div
+                            className={`w-6 h-6 rounded-full border-2 border-black transition-colors ${
+                              idx === activeIndex ? light.color : 'bg-gray-300'
+                            }`}
+                          ></div>
+                          <span className="text-xs font-semibold text-gray-600">{light.label}</span>
+                        </div>
+                      ));
+                    })()}
                   </div>
                   <div>
                     <span
@@ -451,37 +452,39 @@ export default function EvaluationForm({ demoMode = false }: EvaluationFormProps
               <div className="p-4 border-4 border-black rounded-lg bg-white shadow-md">
                 <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">📜 DSGVO</h4>
                 {/* Traffic light for GDPR */}
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="space-y-1">
-                    {[0, 1, 2, 3].map((idx) => {
-                      let activeIndex = 3;
-                      let color = 'bg-green-500';
-                      const status = (result.compliance as any).gdpr_status ?? (result.compliance as any).gdpr?.lawful_basis;
-                      if (status && typeof status === 'string') {
-                        const lower = status.toLowerCase();
-                        // Map GDPR statuses to colours. The prompt enumerates
-                        // "green", "yellow" and "red". Fall back to green for
-                        // unknown values.
-                        if (lower === 'red') {
-                          activeIndex = 1;
-                          color = 'bg-red-500';
-                        } else if (lower === 'yellow') {
-                          activeIndex = 2;
-                          color = 'bg-yellow-400';
-                        } else if (lower === 'green') {
-                          activeIndex = 3;
-                          color = 'bg-green-500';
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="space-y-1">
+                      {(() => {
+                        const gdprLights = [
+                          { label: 'Hohe Risiken', color: 'bg-red-500', value: 'red' },
+                          { label: 'Überprüfen', color: 'bg-yellow-400', value: 'yellow' },
+                          { label: 'Konform', color: 'bg-green-500', value: 'green' },
+                        ];
+
+                        const status = (result.compliance as any).gdpr_status ?? (result.compliance as any).gdpr?.lawful_basis;
+                        let activeIndex = 2; // Default to green/compliant
+
+                        if (status && typeof status === 'string') {
+                          const lower = status.toLowerCase();
+                          const mappedIndex = gdprLights.findIndex((light) => light.value === lower);
+                          if (mappedIndex !== -1) {
+                            activeIndex = mappedIndex;
+                          }
                         }
-                      }
-                      return (
-                        <div
-                          key={idx}
-                          className={`w-5 h-5 rounded-full border-2 border-black ${idx === activeIndex ? color : 'bg-gray-300'}`}
-                        ></div>
-                      );
-                    })}
-                  </div>
-                  <div>
+
+                        return gdprLights.map((light, idx) => (
+                          <div key={light.label} className="flex items-center gap-2">
+                            <div
+                              className={`w-6 h-6 rounded-full border-2 border-black transition-colors ${
+                                idx === activeIndex ? light.color : 'bg-gray-300'
+                              }`}
+                            ></div>
+                            <span className="text-xs font-semibold text-gray-600">{light.label}</span>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                    <div>
                     <span
                       className={`inline-block px-2 py-1 rounded-md text-sm font-medium text-white ${(() => {
                         const status = (result.compliance as any).gdpr_status ?? (result.compliance as any).gdpr?.lawful_basis;
