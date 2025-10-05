@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabaseServerClient';
 import AdminDashboard from '@/components/AdminDashboard';
+import { isSupabaseConfigured } from '@/lib/env';
+import { getDemoUserFromCookies } from '@/lib/demoSession';
+import { getDemoPrompts } from '@/lib/demoData';
+import { isAdminRole } from '@/lib/roles';
 
 /**
  * Server component for the admin dashboard.  It verifies the user is
@@ -11,28 +15,36 @@ import AdminDashboard from '@/components/AdminDashboard';
  * screen or the home page.
  */
 export default async function AdminPage() {
-  const supabase = createSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) {
+  if (isSupabaseConfigured()) {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) {
+      redirect('/login');
+    }
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    if (!isAdminRole(profile?.role)) {
+      redirect('/');
+    }
+    const { data: settings } = await supabase
+      .from('admin_settings')
+      .select('prompts')
+      .eq('id', 1)
+      .single();
+    const prompts = settings?.prompts ?? {};
+    return <AdminDashboard initialPrompts={prompts} />;
+  }
+  const demoUser = getDemoUserFromCookies();
+  if (!demoUser) {
     redirect('/login');
   }
-  // Check the user's role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  if (profile?.role !== 'admin') {
+  if (!isAdminRole(demoUser.role)) {
     redirect('/');
   }
-  // Fetch existing prompts
-  const { data: settings } = await supabase
-    .from('admin_settings')
-    .select('prompts')
-    .eq('id', 1)
-    .single();
-  const prompts = settings?.prompts ?? {};
-  return <AdminDashboard initialPrompts={prompts} />;
+  return <AdminDashboard initialPrompts={getDemoPrompts()} />;
 }
