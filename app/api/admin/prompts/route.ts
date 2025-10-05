@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseServerClient';
-import { createServerSupabaseClient } from '@/server/supabase';
 import { isSupabaseConfigured } from '@/lib/env';
 import { getDemoUserFromCookies } from '@/lib/demoSession';
 import { getDemoPrompts, setDemoPrompts } from '@/lib/demoData';
@@ -58,10 +57,6 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-    .single();
-  if (!isAdminRole(profile?.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
   const { data: settings, error } = await supabase
     .from('admin_settings')
     .select('prompts')
@@ -150,11 +145,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-    .single();
-  if (!isAdminRole(profile?.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServerSupabaseClient() : supabaseUser;
   const { error: updateError } = await supabase
     .from('admin_settings')
     .update({
