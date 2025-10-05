@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from '@/lib/env';
 import { getDemoUserFromCookies } from '@/lib/demoSession';
 import { getDemoPrompts } from '@/lib/demoData';
 import { isAdminRole } from '@/lib/roles';
+import { getSupabaseServiceClient } from '@/lib/supabaseServiceClient';
 
 /**
  * Server component for the admin dashboard.  It verifies the user is
@@ -23,10 +24,41 @@ export default async function AdminPage() {
     if (!user) {
       redirect('/login');
     }
+
+    const candidateRoles: Array<string | null | undefined> = [
+      (user.app_metadata?.role as string | undefined) ?? undefined,
+      (user.user_metadata?.role as string | undefined) ?? undefined
+    ];
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile?.role) {
+      candidateRoles.unshift(profile.role);
+    }
+
+    if (!profile?.role) {
+      const serviceClient = await getSupabaseServiceClient();
+      if (serviceClient) {
+        const { data: serviceProfile } = await serviceClient
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (serviceProfile?.role) {
+          candidateRoles.unshift(serviceProfile.role);
+        }
+      }
+    }
+
+    const isAdmin = candidateRoles.some((role) => isAdminRole(role));
+    if (!isAdmin) {
+      redirect('/');
+    }
+
       .single();
     if (!isAdminRole(profile?.role)) {
       redirect('/');

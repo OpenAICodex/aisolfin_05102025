@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from '@/lib/env';
 import { getDemoUserFromCookies } from '@/lib/demoSession';
 import { getDemoPrompts, setDemoPrompts } from '@/lib/demoData';
 import { isAdminRole } from '@/lib/roles';
+import { getSupabaseServiceClient } from '@/lib/supabaseServiceClient';
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -24,10 +25,39 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
+  const candidateRoles: Array<string | null | undefined> = [
+    (user.app_metadata?.role as string | undefined) ?? undefined,
+    (user.user_metadata?.role as string | undefined) ?? undefined
+  ];
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
+    .maybeSingle();
+
+  if (profile?.role) {
+    candidateRoles.unshift(profile.role);
+  }
+
+  if (!profile?.role) {
+    const serviceClient = await getSupabaseServiceClient();
+    if (serviceClient) {
+      const { data: serviceProfile } = await serviceClient
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (serviceProfile?.role) {
+        candidateRoles.unshift(serviceProfile.role);
+      }
+    }
+  }
+
+  if (!candidateRoles.some((role) => isAdminRole(role))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
     .single();
   if (!isAdminRole(profile?.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -84,10 +114,42 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
+  const candidateRoles: Array<string | null | undefined> = [
+    (user.app_metadata?.role as string | undefined) ?? undefined,
+    (user.user_metadata?.role as string | undefined) ?? undefined
+  ];
+
   const { data: profile } = await supabaseUser
     .from('profiles')
     .select('role')
     .eq('id', user.id)
+    .maybeSingle();
+
+  if (profile?.role) {
+    candidateRoles.unshift(profile.role);
+  }
+
+  const serviceClient = (await getSupabaseServiceClient()) ?? undefined;
+
+  let supabase = supabaseUser;
+  if (!profile?.role && serviceClient) {
+    const { data: serviceProfile } = await serviceClient
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (serviceProfile?.role) {
+      candidateRoles.unshift(serviceProfile.role);
+    }
+  }
+  if (serviceClient) {
+    supabase = serviceClient;
+  }
+
+  if (!candidateRoles.some((role) => isAdminRole(role))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
     .single();
   if (!isAdminRole(profile?.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
