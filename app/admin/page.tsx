@@ -4,6 +4,7 @@ import AdminDashboard from '@/components/AdminDashboard';
 import { isSupabaseConfigured } from '@/lib/env';
 import { getDemoUserFromCookies } from '@/lib/demoSession';
 import { getDemoPrompts } from '@/lib/demoData';
+import { isAdminRole } from '@/lib/roles';
 
 /**
  * Server component for the admin dashboard.  It verifies the user is
@@ -27,7 +28,7 @@ export default async function AdminPage() {
       .select('role')
       .eq('id', user.id)
       .single();
-    if (profile?.role !== 'admin') {
+    if (!isAdminRole(profile?.role)) {
       redirect('/');
     }
     const { data: settings } = await supabase
@@ -42,7 +43,7 @@ export default async function AdminPage() {
   if (!demoUser) {
     redirect('/login');
   }
-  if (demoUser.role !== 'admin') {
+  if (!isAdminRole(demoUser.role)) {
     redirect('/');
   }
   return <AdminDashboard initialPrompts={getDemoPrompts()} />;

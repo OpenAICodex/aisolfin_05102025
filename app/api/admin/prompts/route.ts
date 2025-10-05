@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/server/supabase';
 import { isSupabaseConfigured } from '@/lib/env';
 import { getDemoUserFromCookies } from '@/lib/demoSession';
 import { getDemoPrompts, setDemoPrompts } from '@/lib/demoData';
+import { isAdminRole } from '@/lib/roles';
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -11,7 +12,7 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
-    if (user.role !== 'admin') {
+    if (!isAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     return NextResponse.json(getDemoPrompts());
@@ -28,7 +29,7 @@ export async function GET() {
     .select('role')
     .eq('id', user.id)
     .single();
-  if (profile?.role !== 'admin') {
+  if (!isAdminRole(profile?.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const { data: settings, error } = await supabase
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
-    if (user.role !== 'admin') {
+    if (!isAdminRole(user.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     setDemoPrompts({
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
     .select('role')
     .eq('id', user.id)
     .single();
-  if (profile?.role !== 'admin') {
+  if (!isAdminRole(profile?.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServerSupabaseClient() : supabaseUser;
