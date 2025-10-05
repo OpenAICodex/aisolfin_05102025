@@ -37,6 +37,17 @@ npm run dev
 
 The application will then be available at http://localhost:3000. Unauthenticated visitors are automatically redirected to the login page.
 
+Demo mode
+
+If you want to explore the UI without Supabase or OpenAI credentials, enable the demo mode by setting the following variables in `.env.local` (or your hosting provider):
+
+```
+DEMO_MODE=true
+NEXT_PUBLIC_DEMO_MODE=true
+```
+
+In demo mode, authentication, evaluations, and admin changes are not persisted; predefined example data is shown instead.
+
 Scripts
 
 Embedding new documents: With ts-node scripts/embed.ts <pdf>, administrators can read new PDF regulations, split them into chunks, compute vectors, and write them to the database. Before running, both OpenAI and Supabase credentials must be set as environment variables.

@@ -79,6 +79,7 @@ export default function EvaluationForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<EvaluationResult | null>(null);
+  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   /**
    * Advance to the next step. When arriving at the submission step
@@ -570,6 +571,11 @@ export default function EvaluationForm() {
     <div className="flex flex-col items-center p-4">
       <div className="w-full max-w-3xl border-4 border-black rounded-xl shadow-lg bg-white p-6">
         {renderProgress()}
+        {demoMode && (
+          <div className="mb-4 p-3 border-2 border-purple-400 rounded-md bg-purple-50 text-sm text-purple-800">
+            Demo-Modus aktiv: Analysen liefern vordefinierte Beispielergebnisse.
+          </div>
+        )}
         {renderStepContent()}
         <div className="flex justify-between mt-8 pt-4 border-t-2 border-black">
           <button

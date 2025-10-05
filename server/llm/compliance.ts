@@ -38,6 +38,9 @@ interface ComplianceOptions {
  * passing an empty context to the model).
  */
 async function fetchExcerpts(description: string, matchCount = 8): Promise<string> {
+  if (process.env.DEMO_MODE === 'true') {
+    return 'Demo-Kontext: Prüfe den beschriebenen Prozess auf DSGVO- und EU-AI-Act-Konformität.';
+  }
   const supabase = createServerSupabaseClient();
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   // Generate embedding for the query using OpenAI's embedding API. The
@@ -69,6 +72,18 @@ async function fetchExcerpts(description: string, matchCount = 8): Promise<strin
  * structure does not conform.
  */
 export async function runCompliance({ description, k = 8 }: ComplianceOptions): Promise<ComplianceResult> {
+  if (process.env.DEMO_MODE === 'true') {
+    return {
+      gdpr_status: 'green',
+      gdpr_section: 'Art. 6 Abs. 1 lit. f DSGVO',
+      ai_act_status: 'ok',
+      ai_act_section: 'Art. 10 Abs. 3 EU AI Act',
+      explanations: {
+        gdpr: 'Demo-Modus: Der Prozess nutzt personenbezogene Daten mit klarer Rechtsgrundlage und transparenter Dokumentation.',
+        ai_act: 'Demo-Modus: Die Risiken werden überwacht und menschliche Aufsicht ist sichergestellt.'
+      }
+    };
+  }
   const excerpts = await fetchExcerpts(description, k);
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,

@@ -6,6 +6,7 @@ import { supabaseBrowser } from '@/lib/supabaseBrowser';
 export default function AuthCallback() {
   const router = useRouter();
   const params = useSearchParams();
+  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
   useEffect(() => {
     // After the user clicks the magic link in their email Supabase will
     // redirect back to this page. Depending on the auth flow, the
@@ -18,6 +19,10 @@ export default function AuthCallback() {
     // we can safely redirect to the home page once the session is
     // available (or after the exchange completes).
     const finalizeAuth = async () => {
+      if (demoMode) {
+        router.replace('/');
+        return;
+      }
       const code = params.get('code');
       if (code) {
         // When using the PKCE flow the auth code is returned in the URL. We
@@ -50,6 +55,6 @@ export default function AuthCallback() {
       router.replace('/');
     };
     finalizeAuth();
-  }, [params, router]);
+  }, [demoMode, params, router]);
   return <p className="p-4">Anmeldung wird abgeschlossen…</p>;
 }
