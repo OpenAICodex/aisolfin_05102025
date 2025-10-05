@@ -2,6 +2,10 @@
 
 import React, { useState } from 'react';
 
+interface EvaluationFormProps {
+  demoMode?: boolean;
+}
+
 /**
  * Multi‑step evaluation form that mimics the design of the reference
  * AI Solution Finder app. The form is split into four steps: process
@@ -59,7 +63,7 @@ const appCategories: { [category: string]: string[] } = {
   'Business Intelligence': ['Tableau', 'Power BI', 'Looker', 'Qlik Sense', 'Metabase']
 };
 
-export default function EvaluationForm() {
+export default function EvaluationForm({ demoMode = false }: EvaluationFormProps) {
   const [step, setStep] = useState(1);
   const [description, setDescription] = useState('');
   // Note: applications are derived from `selectedApps` and any custom entry.
@@ -569,6 +573,14 @@ export default function EvaluationForm() {
   return (
     <div className="flex flex-col items-center p-4">
       <div className="w-full max-w-3xl border-4 border-black rounded-xl shadow-lg bg-white p-6">
+        {demoMode && (
+          <div className="mb-4 border-2 border-dashed border-purple-400 rounded-md bg-purple-50 p-4 text-sm text-purple-900">
+            <p className="font-semibold mb-1">Demo-Modus aktiv</p>
+            <p>
+              Supabase ist nicht konfiguriert. Die Analyse nutzt Beispieldaten und Ergebnisse werden lokal simuliert.
+            </p>
+          </div>
+        )}
         {renderProgress()}
         {renderStepContent()}
         <div className="flex justify-between mt-8 pt-4 border-t-2 border-black">
