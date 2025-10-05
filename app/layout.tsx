@@ -1,9 +1,6 @@
 import './globals.css';
 import React from 'react';
 import Link from 'next/link';
-import { isSupabaseConfigured } from '@/lib/env';
-
-const supabaseConfigured = isSupabaseConfigured();
 
 export const metadata = {
   title: 'AI Solution Finder',
@@ -18,11 +15,6 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.__SUPABASE_CONFIGURED__ = ${supabaseConfigured ? 'true' : 'false'};`
-          }}
-        />
         <div className="min-h-screen flex flex-col bg-gray-100">
           {/* Site header styled after the reference application. The header is
               surrounded by a thick black border and contains the logo,

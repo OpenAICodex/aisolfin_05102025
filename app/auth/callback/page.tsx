@@ -2,16 +2,11 @@
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
-import { isSupabaseConfigured } from '@/lib/env';
 
 export default function AuthCallback() {
   const router = useRouter();
   const params = useSearchParams();
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      router.replace('/');
-      return;
-    }
     // After the user clicks the magic link in their email Supabase will
     // redirect back to this page. Depending on the auth flow, the
     // parameters will differ:

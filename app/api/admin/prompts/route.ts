@@ -1,62 +1,38 @@
+"use client";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseServerClient';
-import { isSupabaseConfigured } from '@/lib/env';
-import { getDemoUserFromCookies } from '@/lib/demoSession';
-import { getDemoPrompts, setDemoPrompts } from '@/lib/demoData';
-import { isAdminRole } from '@/lib/roles';
-import { getSupabaseServiceClient } from '@/lib/supabaseServiceClient';
+import { createServerSupabaseClient } from '@/server/supabase';
+
+/**
+ * API route for managing system prompts.  Admins can fetch and update
+ * the stored prompts used for the compliance, business value and tools
+ * analyses.  The prompts are stored as a JSON object in the
+ * `admin_settings` table under the `prompts` column.  Only users with
+ * the 'admin' role may access or modify these values.  The route
+ * responds with a 401 when unauthenticated and 403 when the caller is
+ * not an admin.
+ */
 
 export async function GET() {
-  if (!isSupabaseConfigured()) {
-    const user = getDemoUserFromCookies();
-    if (!user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    if (!isAdminRole(user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    return NextResponse.json(getDemoPrompts());
-  }
   const supabase = createSupabaseServerClient();
+  // Ensure the user is authenticated
   const {
     data: { user }
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
-  const candidateRoles: Array<string | null | undefined> = [
-    (user.app_metadata?.role as string | undefined) ?? undefined,
-    (user.user_metadata?.role as string | undefined) ?? undefined
-  ];
-
+  // Verify admin role
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .maybeSingle();
-
-  if (profile?.role) {
-    candidateRoles.unshift(profile.role);
-  }
-
-  if (!profile?.role) {
-    const serviceClient = await getSupabaseServiceClient();
-    if (serviceClient) {
-      const { data: serviceProfile } = await serviceClient
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (serviceProfile?.role) {
-        candidateRoles.unshift(serviceProfile.role);
-      }
-    }
-  }
-
-  if (!candidateRoles.some((role) => isAdminRole(role))) {
+    .single();
+  if (profile?.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-
+  // Fetch existing prompts
   const { data: settings, error } = await supabase
     .from('admin_settings')
     .select('prompts')
@@ -69,12 +45,31 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const supabaseUser = createSupabaseServerClient();
+  // Authenticate the user
+  const {
+    data: { user }
+  } = await supabaseUser.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+  // Check role
+  const { data: profile } = await supabaseUser
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  // Parse request body
   let body: any;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
+  // Validate expected fields
   const {
     compliancePrompt,
     businessPrompt,
@@ -87,73 +82,19 @@ export async function POST(req: NextRequest) {
   ) {
     return NextResponse.json({ error: 'Missing or invalid prompt fields' }, { status: 400 });
   }
-  if (!isSupabaseConfigured()) {
-    const user = getDemoUserFromCookies();
-    if (!user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    if (!isAdminRole(user.role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    setDemoPrompts({
-      compliance: compliancePrompt,
-      businessValue: businessPrompt,
-      toolsAutomation: toolsPrompt
-    });
-    return NextResponse.json({ success: true });
-  }
-  const supabaseUser = createSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabaseUser.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-  const candidateRoles: Array<string | null | undefined> = [
-    (user.app_metadata?.role as string | undefined) ?? undefined,
-    (user.user_metadata?.role as string | undefined) ?? undefined
-  ];
-
-  const { data: profile } = await supabaseUser
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (profile?.role) {
-    candidateRoles.unshift(profile.role);
-  }
-
-  const serviceClient = (await getSupabaseServiceClient()) ?? undefined;
-
-  let supabase = supabaseUser;
-  if (!profile?.role && serviceClient) {
-    const { data: serviceProfile } = await serviceClient
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (serviceProfile?.role) {
-      candidateRoles.unshift(serviceProfile.role);
-    }
-  }
-  if (serviceClient) {
-    supabase = serviceClient;
-  }
-
-  if (!candidateRoles.some((role) => isAdminRole(role))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
+  // Build the new prompts object
+  const newPrompts = {
+    compliance: compliancePrompt,
+    businessValue: businessPrompt,
+    toolsAutomation: toolsPrompt
+  };
+  // Use a service client to bypass RLS on admin_settings if the service key is available
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createServerSupabaseClient()
+    : supabaseUser;
   const { error: updateError } = await supabase
     .from('admin_settings')
-    .update({
-      prompts: {
-        compliance: compliancePrompt,
-        businessValue: businessPrompt,
-        toolsAutomation: toolsPrompt
-      }
-    })
+    .update({ prompts: newPrompts })
     .eq('id', 1);
   if (updateError) {
     return NextResponse.json({ error: 'Failed to update prompts' }, { status: 500 });

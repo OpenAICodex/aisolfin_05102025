@@ -6,10 +6,6 @@ import { createServerSupabaseClient } from '@/server/supabase';
 import { runCompliance } from '@/server/llm/compliance';
 import { runBusinessValue } from '@/server/llm/businessValue';
 import { runToolsAutomation } from '@/server/llm/toolsAutomation';
-import { isSupabaseConfigured } from '@/lib/env';
-import { getDemoUserFromCookies } from '@/lib/demoSession';
-import { createDemoEvaluation } from '@/lib/demoData';
-import { isAdminRole, normalizeRole } from '@/lib/roles';
 
 // Zod schema describing the expected shape of the request body. Additional
 // fields will be ignored and missing required fields will result in a 400.
@@ -22,33 +18,6 @@ const RequestSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-  }
-  let input;
-  try {
-    input = RequestSchema.parse(body);
-  } catch (err) {
-    return NextResponse.json({ error: 'Invalid request', details: err }, { status: 400 });
-  }
-
-  if (!isSupabaseConfigured()) {
-    const demoUser = getDemoUserFromCookies();
-    if (!demoUser) {
-      return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
-    }
-    const evaluation = createDemoEvaluation({
-      description: input.description,
-      applications: input.applications,
-      timeRequired: input.timeRequired,
-      frequency: input.frequency,
-      stakeholder: input.stakeholder
-    });
-    return NextResponse.json(evaluation.outputs);
-  }
   // Create a Supabase client bound to the current request cookies in order to
   // retrieve the currently authenticated user. This client injects access and
   // refresh tokens from cookies into the Authorization header so that
@@ -75,30 +44,17 @@ export async function POST(req: NextRequest) {
   const supabase = supabaseService ?? supabaseUser;
   // Ensure the authenticated user has a row in the profiles table. The
   // evaluations table enforces a foreign key to profiles.id, so inserting
-  // an evaluation without a corresponding profile row will fail. Fetch the
-  // existing role first to avoid clobbering admin privileges when updating
-  // profile metadata.
-  const { data: profileRow, error: profileError } = await supabase
+  // an evaluation without a corresponding profile row will fail. Use a
+  // service-level upsert to insert the profile if it does not exist.
+  await supabase
     .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    console.error('Failed to load profile', profileError);
-    return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 });
-  }
-
-  let role = normalizeRole(profileRow?.role);
-
-  if (!profileRow) {
-    const { error: insertError } = await supabase
-      .from('profiles')
-      .insert({ id: user.id, email: user.email ?? null, role });
-    if (insertError) {
-      console.error('Failed to create profile', insertError);
-      return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
-    }
+    .upsert({ id: user.id, email: user.email ?? null, role: 'user' }, { onConflict: 'id' });
+  const body = await req.json();
+  let input;
+  try {
+    input = RequestSchema.parse(body);
+  } catch (err) {
+    return NextResponse.json({ error: 'Invalid request', details: err }, { status: 400 });
   }
   // Determine the start of the current day in Europe/Berlin. This ensures
   // rate limits reset at midnight Berlin time regardless of server locale.
@@ -106,8 +62,13 @@ export async function POST(req: NextRequest) {
   const berlinTimeString = now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' });
   const berlinDate = new Date(berlinTimeString);
   const startOfDay = new Date(Date.UTC(berlinDate.getUTCFullYear(), berlinDate.getUTCMonth(), berlinDate.getUTCDate()));
-  // Determine the user's role once the profile has been ensured.
-  const roleIsAdmin = isAdminRole(role);
+  // Fetch the user's role. Default to 'user' when no profile row exists.
+  const { data: profileRow, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  const role = profileError || !profileRow ? 'user' : profileRow.role;
   // Determine today's date in Europe/Berlin for rate limiting.  The
   // date column in rate_limits stores only the day (YYYY-MM-DD).  We
   // generate a string using the Berlin time zone to correctly reset at
@@ -117,7 +78,7 @@ export async function POST(req: NextRequest) {
   // existing rate limit record.  If it does not exist or the stored
   // date is from a previous day we reset the count to zero.
   let currentCount = 0;
-  if (!roleIsAdmin) {
+  if (role !== 'admin') {
     const { data: rateRow, error: rateError } = await supabase
       .from('rate_limits')
       .select('date, count')
@@ -164,7 +125,7 @@ export async function POST(req: NextRequest) {
     // accordingly and updates the date.  Using the service client
     // ensures the operation succeeds under RLS.  Note: the
     // conflict target is the primary key (user_id).
-    if (!roleIsAdmin) {
+    if (role !== 'admin') {
       await supabase.from('rate_limits').upsert(
         { user_id: user.id, date: berlinDateString, count: currentCount + 1 },
         { onConflict: 'user_id' }
