@@ -59,6 +59,10 @@ export default async function AdminPage() {
       redirect('/');
     }
 
+      .single();
+    if (!isAdminRole(profile?.role)) {
+      redirect('/');
+    }
     const { data: settings } = await supabase
       .from('admin_settings')
       .select('prompts')
