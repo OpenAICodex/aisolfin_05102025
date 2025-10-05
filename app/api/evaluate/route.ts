@@ -6,6 +6,9 @@ import { createServerSupabaseClient } from '@/server/supabase';
 import { runCompliance } from '@/server/llm/compliance';
 import { runBusinessValue } from '@/server/llm/businessValue';
 import { runToolsAutomation } from '@/server/llm/toolsAutomation';
+import { isSupabaseConfigured } from '@/lib/env';
+import { getDemoUserFromCookies } from '@/lib/demoSession';
+import { createDemoEvaluation } from '@/lib/demoData';
 
 // Zod schema describing the expected shape of the request body. Additional
 // fields will be ignored and missing required fields will result in a 400.
@@ -18,6 +21,33 @@ const RequestSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+  }
+  let input;
+  try {
+    input = RequestSchema.parse(body);
+  } catch (err) {
+    return NextResponse.json({ error: 'Invalid request', details: err }, { status: 400 });
+  }
+
+  if (!isSupabaseConfigured()) {
+    const demoUser = getDemoUserFromCookies();
+    if (!demoUser) {
+      return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+    }
+    const evaluation = createDemoEvaluation({
+      description: input.description,
+      applications: input.applications,
+      timeRequired: input.timeRequired,
+      frequency: input.frequency,
+      stakeholder: input.stakeholder
+    });
+    return NextResponse.json(evaluation.outputs);
+  }
   // Create a Supabase client bound to the current request cookies in order to
   // retrieve the currently authenticated user. This client injects access and
   // refresh tokens from cookies into the Authorization header so that
@@ -49,13 +79,6 @@ export async function POST(req: NextRequest) {
   await supabase
     .from('profiles')
     .upsert({ id: user.id, email: user.email ?? null, role: 'user' }, { onConflict: 'id' });
-  const body = await req.json();
-  let input;
-  try {
-    input = RequestSchema.parse(body);
-  } catch (err) {
-    return NextResponse.json({ error: 'Invalid request', details: err }, { status: 400 });
-  }
   // Determine the start of the current day in Europe/Berlin. This ensures
   // rate limits reset at midnight Berlin time regardless of server locale.
   const now = new Date();
