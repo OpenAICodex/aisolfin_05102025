@@ -19,6 +19,14 @@ export interface ToolsOptions {
 }
 
 export async function runToolsAutomation(options: ToolsOptions): Promise<ToolsResult> {
+  if (process.env.DEMO_MODE === 'true') {
+    return {
+      recommendations: [
+        { tool: 'Zapier', reason: 'Demo-Modus: Verbindet Formular- und CRM-Systeme ohne zusätzlichen Code.' },
+        { tool: 'Make', reason: 'Demo-Modus: Unterstützt mehrstufige Workflows mit grafischer Oberfläche.' }
+      ]
+    };
+  }
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: process.env.OPENAI_BASE_URL ?? undefined

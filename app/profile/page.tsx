@@ -11,6 +11,7 @@ import { createSupabaseServerClient } from '@/lib/supabaseServerClient';
  * simply shows the stored JSON.
  */
 export default async function ProfilePage() {
+  const demoMode = process.env.DEMO_MODE === 'true';
   const supabase = createSupabaseServerClient();
   // Retrieve the current user from the session. When no user is
   // present we return early and redirect to the login page. The
@@ -43,9 +44,14 @@ export default async function ProfilePage() {
           Neue Analyse
         </a>
       </div>
-      <div className="p-4 border-4 border-black rounded-md bg-white shadow-lg">
+      <div className="p-4 border-4 border-black rounded-md bg-white shadow-lg space-y-2">
         <p className="mb-2"><strong>E‑Mail:</strong> {user.email}</p>
         <p><strong>Gesamtanzahl Auswertungen:</strong> {evaluations?.length ?? 0}</p>
+        {demoMode && (
+          <p className="text-sm text-purple-700">
+            Demo-Modus aktiv: Ergebnisse sind Beispielwerte und werden nicht gespeichert.
+          </p>
+        )}
       </div>
       <div>
         <h3 className="text-2xl font-semibold mb-4">Vergangene Analysen</h3>

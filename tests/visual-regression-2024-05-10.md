@@ -28,4 +28,5 @@
 ## Recommendations
 - Provide test credentials or mock auth to allow validation of authenticated routes (`/profile`, `/admin`, `/auth/callback`).
 - Clean up deprecated configuration options in `next.config.mjs` to avoid future build failures.
+- Verify that demo mode is enabled when backend credentials are unavailable; sample data now renders across dashboard, profile, and admin flows for visual QA.
 

@@ -16,6 +16,13 @@ export interface BusinessValueOptions {
 }
 
 export async function runBusinessValue(options: BusinessValueOptions): Promise<BusinessValueResult> {
+  if (process.env.DEMO_MODE === 'true') {
+    return {
+      score: 72,
+      narrative:
+        'Demo-Modus: Basierend auf Zeitaufwand und Frequenz ergibt sich ein hohes Einsparpotenzial durch Automatisierung.'
+    };
+  }
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
     baseURL: process.env.OPENAI_BASE_URL ?? undefined

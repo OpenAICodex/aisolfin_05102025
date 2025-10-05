@@ -24,8 +24,13 @@ export default function AdminDashboard({ initialPrompts }: AdminDashboardProps) 
   const [tools, setTools] = useState(initialPrompts.toolsAutomation ?? '');
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   const handleSave = async () => {
+    if (demoMode) {
+      setStatus('Demo-Modus: Änderungen werden nicht dauerhaft gespeichert.');
+      return;
+    }
     setSaving(true);
     setStatus(null);
     try {
@@ -88,10 +93,12 @@ export default function AdminDashboard({ initialPrompts }: AdminDashboardProps) 
           disabled={saving}
           onClick={handleSave}
           className={`inline-flex items-center px-4 py-2 rounded-md border-2 border-black font-medium ${
-            saving ? 'bg-gray-300 text-gray-500' : 'bg-gradient-to-r from-purple-600 to-purple-500 text-white hover:from-purple-700 hover:to-purple-600'
+            saving || demoMode
+              ? 'bg-gray-300 text-gray-500'
+              : 'bg-gradient-to-r from-purple-600 to-purple-500 text-white hover:from-purple-700 hover:to-purple-600'
           }`}
         >
-          {saving ? 'Speichern…' : 'Speichern'}
+          {saving ? 'Speichern…' : demoMode ? 'Demo aktiv' : 'Speichern'}
         </button>
         {status && <p className="text-sm mt-2 text-gray-700">{status}</p>}
         {/* Placeholder for document uploads */}

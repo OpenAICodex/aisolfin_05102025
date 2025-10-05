@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useRouter } from 'next/navigation';
 
@@ -7,6 +8,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const router = useRouter();
+  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
   // Send a magic link to the provided email address. The redirect
   // target points to the auth callback route which will exchange the
@@ -35,7 +37,17 @@ export default function LoginPage() {
           <h2 className="text-3xl font-bold text-center mb-1">Willkommen!</h2>
           <p className="text-sm text-gray-700 text-center">Melde dich an, um deine Prozesse zu analysieren.</p>
         </div>
-        {submitted ? (
+        {demoMode ? (
+          <div className="space-y-4 text-center text-gray-700">
+            <p>Der Demo-Modus ist aktiv. Eine Anmeldung ist nicht erforderlich.</p>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-md border-2 border-black bg-gradient-to-r from-purple-600 to-purple-500 text-white font-semibold hover:from-purple-700 hover:to-purple-600"
+            >
+              Demo starten
+            </Link>
+          </div>
+        ) : submitted ? (
           <p className="text-center text-gray-700">Wir haben dir einen Magic‑Link per E‑Mail geschickt. Bitte überprüfe dein Postfach.</p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">

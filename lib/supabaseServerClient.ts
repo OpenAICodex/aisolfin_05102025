@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
+import { createDemoSupabaseClient } from '@/lib/demoSupabaseClient';
 
 /**
  * Creates a Supabase client scoped to the current Next.js request using the
@@ -14,12 +15,18 @@ import type { Database } from '@/types/supabase';
  * `supabase.auth.getUser()` to succeed.
  */
 export const createSupabaseServerClient = (): SupabaseClient<Database> => {
-  const cookieStore = cookies();
+  const demoMode = process.env.DEMO_MODE === 'true';
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) {
-    throw new Error('Supabase environment variables are not configured');
+
+  if (demoMode || !url || !anon) {
+    if (!demoMode && (!url || !anon)) {
+      console.warn('Supabase environment variables missing. Falling back to demo client.');
+    }
+    return createDemoSupabaseClient();
   }
+
+  const cookieStore = cookies();
   return createServerClient<Database>(url, anon, {
     cookies: {
       /**

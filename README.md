@@ -33,6 +33,17 @@
    ```
    Die Anwendung ist anschließend unter `http://localhost:3000` erreichbar. Nicht‑authentifizierte Besucher werden automatisch zur Anmeldeseite umgeleitet.
 
+## Demo-Modus
+
+Wenn keine Supabase- oder OpenAI-Credentials verfügbar sind, kann die App im Demo-Modus mit statischen Beispielwerten betrieben werden. Setze dafür in `.env.local` (oder den jeweiligen Hosting-Variablen)
+
+```bash
+DEMO_MODE=true
+NEXT_PUBLIC_DEMO_MODE=true
+```
+
+Im Demo-Modus werden Authentifizierung, Auswertungen und Admin-Einstellungen nicht persistent gespeichert; sämtliche Ergebnisse sind vorbefüllt.
+
 ## Scripts
 
 * **Embedding neuer Dokumente:** Mit `ts-node scripts/embed.ts <pdf>` können Administratoren neue PDF‑Regulationen einlesen, in Chunks aufteilen, Vektoren berechnen und in die Datenbank schreiben. Vor dem Ausführen müssen sowohl OpenAI‑ als auch Supabase‑Credentials als Umgebungsvariablen gesetzt sein.
