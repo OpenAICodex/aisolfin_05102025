@@ -48,5 +48,5 @@ export const createSupabaseServerClient = (): SupabaseClient<Database> => {
         }
       }
     }
-  });
+  }) as unknown as SupabaseClient<Database>;
 };
