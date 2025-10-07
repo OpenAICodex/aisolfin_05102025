@@ -4,6 +4,24 @@ import { createServerSupabaseClient } from '@/server/supabase';
 import { isSupabaseConfigured } from '@/lib/env';
 import { getDemoUserFromCookies } from '@/lib/demoSession';
 import { getDemoPrompts, setDemoPrompts } from '@/lib/demoData';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+
+import type { Database, PromptSettings } from '@/types/supabase';
+
+// choose one client but keep a single, unified type
+let supabase: SupabaseClient<Database>;
+if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createServerSupabaseClient();
+} else {
+  supabase = createSupabaseServerClient();
+}
+
+
+type AdminSettingsRow =
+  Database['public']['Tables']['admin_settings']['Row'];
+type AdminSettingsPick = { prompts: PromptSettings | null };
+
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -27,15 +45,18 @@ export async function GET() {
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single();
-  if (profile?.role !== 'admin') {
+    .maybeSingle<{ role: string | null }>();
+    // .single();
+  if (!profile || profile.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const { data: settings, error } = await supabase
     .from('admin_settings')
     .select('prompts')
     .eq('id', 1)
-    .single();
+    // .single();
+    .maybeSingle<AdminSettingsPick>(); // 👈 force the shape
+
   if (error || !settings) {
     return NextResponse.json({ error: 'Failed to load prompts' }, { status: 500 });
   }
@@ -87,8 +108,9 @@ export async function POST(req: NextRequest) {
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single();
-  if (profile?.role !== 'admin') {
+    // .single();
+    .maybeSingle<{ role: string | null }>();
+  if (!profile || profile.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServerSupabaseClient() : supabaseUser;

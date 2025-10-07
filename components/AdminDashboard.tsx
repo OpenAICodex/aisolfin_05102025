@@ -2,6 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 
+import type { PromptSettings } from '@/types/supabase';
+
+interface AdminDashboardProps {
+  initialPrompts: PromptSettings;
+}
+
 interface AdminDashboardProps {
   initialPrompts: {
     compliance?: string;

@@ -1,3 +1,23 @@
+import { JsonWebKey } from "crypto";
+
+
+
+// Generic JSON type for Supabase json/jsonb columns
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+// Shape you actually store in admin_settings.prompts
+export interface PromptSettings {
+  compliance?: string;
+  businessValue?: string;
+  toolsAutomation?: string;
+}
+
 /**
  * Partial Supabase typings for the project's database. These interfaces
  * describe tables used by the application. The complete types can be
@@ -45,6 +65,23 @@ export interface Database {
           input?: unknown;
           outputs?: unknown;
           created_at?: string;
+        };
+      };
+      admin_settings: {
+        Row: {
+          id: number;
+          prompts: Json | null ;
+          active_doc_version: number | null;
+        };
+        Insert: {
+          id: number;
+          prompts: Json | null;
+          active_doc_version: number | null;
+        };
+        Update: {
+          id: number;
+          prompts: Json | null;
+          active_doc_version: number | null;
         };
       };
       rate_limits: {

@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 
 // Environment variables must be provided in `.env.local` or through your hosting provider.
 const supabaseUrl: string | undefined = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,9 +15,9 @@ if (!supabaseUrl || !anonKey) {
  * available it will be used to enable privileged operations (e.g. inserting
  * embeddings). If not, the anonymous key is used.
  */
-export const createServerSupabaseClient = (): SupabaseClient => {
+export const createServerSupabaseClient = (): SupabaseClient<Database> => {
   const key = serviceKey ?? anonKey;
-  return createClient(supabaseUrl, key, {
+  return createClient<Database>(supabaseUrl, key, {
     auth: {
       persistSession: false
     }

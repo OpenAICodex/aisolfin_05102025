@@ -4,6 +4,15 @@ import AdminDashboard from '@/components/AdminDashboard';
 import { isSupabaseConfigured } from '@/lib/env';
 import { getDemoUserFromCookies } from '@/lib/demoSession';
 import { getDemoPrompts } from '@/lib/demoData';
+import type { Database, PromptSettings } from '@/types/supabase';
+
+
+
+type AdminSettingsRow =
+  Database['public']['Tables']['admin_settings']['Row'];
+type AdminSettingsPick = { prompts: PromptSettings | null };
+
+
 
 /**
  * Server component for the admin dashboard.  It verifies the user is
@@ -26,16 +35,25 @@ export default async function AdminPage() {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single();
-    if (profile?.role !== 'admin') {
+      .maybeSingle<{ role: string | null }>();
+      // .single();
+    // if (profile?.role !== 'admin') {
+    if (!profile || profile.role !== 'admin'){
       redirect('/');
     }
     const { data: settings } = await supabase
       .from('admin_settings')
       .select('prompts')
       .eq('id', 1)
-      .single();
-    const prompts = settings?.prompts ?? {};
+      .maybeSingle<AdminSettingsPick>(); // 👈 force the shape
+      // .single();
+    // const prompts = settings?.prompts ?? {};
+    // const prompts = (settings?.prompts ?? {}) as AdminSettingsPick['prompts'];
+    // const prompts: PromptSettings = (settings?.prompts as PromptSettings) ?? {};
+    const prompts: PromptSettings = settings?.prompts ?? {}; // 👈 now never null
+
+
+
     return <AdminDashboard initialPrompts={prompts} />;
   }
   const demoUser = getDemoUserFromCookies();
