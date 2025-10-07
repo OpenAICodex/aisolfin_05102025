@@ -70,7 +70,7 @@ export interface Database {
       admin_settings: {
         Row: {
           id: number;
-          prompts: Json | null ;
+          prompts: Json | null;
           active_doc_version: number | null;
         };
         Insert: {
@@ -79,9 +79,9 @@ export interface Database {
           active_doc_version: number | null;
         };
         Update: {
-          id: number;
-          prompts: Json | null;
-          active_doc_version: number | null;
+          id?: number;
+          prompts?: Json | null;
+          active_doc_version?: number | null;
         };
       };
       rate_limits: {
