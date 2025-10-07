@@ -114,15 +114,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServerSupabaseClient() : supabaseUser;
-  const { error: updateError } = await supabase
-    .from('admin_settings')
-    .update({
-      prompts: {
-        compliance: compliancePrompt,
-        businessValue: businessPrompt,
-        toolsAutomation: toolsPrompt
-      }
-    })
+  const updates = {
+    prompts: {
+      compliance: compliancePrompt,
+      businessValue: businessPrompt,
+      toolsAutomation: toolsPrompt
+    }
+  } satisfies Database['public']['Tables']['admin_settings']['Update'];
+
+  const adminSettingsTable = supabase.from('admin_settings') as any;
+  const { error: updateError } = await adminSettingsTable
+    // The Supabase client types bundled with `@supabase/ssr` do not narrow
+    // correctly when using our lightweight `Database` definition, causing the
+    // update payload to be inferred as `never`. Casting the table reference to
+    // `any` avoids the false-positive while the `satisfies` clause above keeps
+    // the payload strongly typed.
+    .update(updates)
     .eq('id', 1);
   if (updateError) {
     return NextResponse.json({ error: 'Failed to update prompts' }, { status: 500 });

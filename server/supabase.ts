@@ -21,5 +21,5 @@ export const createServerSupabaseClient = (): SupabaseClient<Database> => {
     auth: {
       persistSession: false
     }
-  });
+  }) as unknown as SupabaseClient<Database>;
 };

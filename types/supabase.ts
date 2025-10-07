@@ -1,7 +1,3 @@
-import { JsonWebKey } from "crypto";
-
-
-
 // Generic JSON type for Supabase json/jsonb columns
 export type Json =
   | string
@@ -43,6 +39,7 @@ export interface Database {
           email?: string | null;
           role?: string | null;
         };
+        Relationships: [];
       };
       evaluations: {
         Row: {
@@ -66,11 +63,12 @@ export interface Database {
           outputs?: unknown;
           created_at?: string;
         };
+        Relationships: [];
       };
       admin_settings: {
         Row: {
           id: number;
-          prompts: Json | null ;
+          prompts: Json | null;
           active_doc_version: number | null;
         };
         Insert: {
@@ -79,10 +77,62 @@ export interface Database {
           active_doc_version: number | null;
         };
         Update: {
-          id: number;
-          prompts: Json | null;
-          active_doc_version: number | null;
+          id?: number;
+          prompts?: Json | null;
+          active_doc_version?: number | null;
         };
+        Relationships: [];
+      };
+      documents: {
+        Row: {
+          id: number;
+          version: number;
+          title: string | null;
+          file_url: string | null;
+          is_active: boolean | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: number;
+          version: number;
+          title?: string | null;
+          file_url?: string | null;
+          is_active?: boolean | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: number;
+          version?: number;
+          title?: string | null;
+          file_url?: string | null;
+          is_active?: boolean | null;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
+      doc_chunks: {
+        Row: {
+          id: number;
+          doc_id: number;
+          chunk: string;
+          embedding: number[] | null;
+          meta: Json | null;
+        };
+        Insert: {
+          id?: number;
+          doc_id: number;
+          chunk: string;
+          embedding?: number[] | null;
+          meta?: Json | null;
+        };
+        Update: {
+          id?: number;
+          doc_id?: number;
+          chunk?: string;
+          embedding?: number[] | null;
+          meta?: Json | null;
+        };
+        Relationships: [];
       };
       rate_limits: {
         Row: {
@@ -100,7 +150,26 @@ export interface Database {
           date?: string;
           count?: number;
         };
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: {
+      match_doc_chunks: {
+        Args: {
+          query_embedding: number[];
+          match_count?: number;
+          doc_version?: number | null;
+        };
+        Returns: Array<{
+          id: number;
+          doc_id: number;
+          chunk: string;
+          similarity: number;
+        }>;
+      };
+    };
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }

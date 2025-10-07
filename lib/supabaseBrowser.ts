@@ -14,7 +14,7 @@ const createClient = () => {
 
 const client = createClient();
 
-export const supabaseBrowser = (client ?? {
+const fallbackClient = {
   auth: {
     async signInWithOtp() {
       throw new Error('Supabase is not configured.');
@@ -29,4 +29,6 @@ export const supabaseBrowser = (client ?? {
       return { data: { session: null }, error: null } as const;
     }
   }
-}) as SupabaseClient<Database>;
+};
+
+export const supabaseBrowser = (client ?? (fallbackClient as unknown)) as SupabaseClient<Database>;
