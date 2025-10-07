@@ -1,6 +1,7 @@
 import { OpenAI } from 'openai';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '../supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { complianceSystemPrompt, buildCompliancePrompt } from '@/prompts/compliance';
 
 /**
@@ -38,7 +39,7 @@ interface ComplianceOptions {
  * passing an empty context to the model).
  */
 async function fetchExcerpts(description: string, matchCount = 8): Promise<string> {
-  const supabase = createServerSupabaseClient();
+  const supabase = createServerSupabaseClient() as SupabaseClient<any>;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   // Generate embedding for the query using OpenAI's embedding API. The
   // resulting vector will be used in a pgvector similarity search. For

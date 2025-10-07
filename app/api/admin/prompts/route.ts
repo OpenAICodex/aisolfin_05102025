@@ -114,15 +114,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
   const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServerSupabaseClient() : supabaseUser;
-  const { error: updateError } = await supabase
-    .from('admin_settings')
-    .update({
-      prompts: {
-        compliance: compliancePrompt,
-        businessValue: businessPrompt,
-        toolsAutomation: toolsPrompt
-      }
-    })
+  const updatePayload = {
+    prompts: {
+      compliance: compliancePrompt,
+      businessValue: businessPrompt,
+      toolsAutomation: toolsPrompt
+    }
+  };
+  const adminSettingsTable = supabase.from('admin_settings') as any;
+  const { error: updateError } = await adminSettingsTable
+    .update(updatePayload)
     .eq('id', 1);
   if (updateError) {
     return NextResponse.json({ error: 'Failed to update prompts' }, { status: 500 });

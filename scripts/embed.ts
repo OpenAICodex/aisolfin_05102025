@@ -3,6 +3,7 @@ import fs from 'fs';
 import { parse } from 'pdf-parse';
 import { OpenAI } from 'openai';
 import { createServerSupabaseClient } from '../server/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * This script demonstrates how to ingest a PDF document, split it into
@@ -28,7 +29,7 @@ async function main() {
     chunks.push(fullText.slice(i, i + chunkSize));
   }
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const supabase = createServerSupabaseClient();
+  const supabase = createServerSupabaseClient() as SupabaseClient<any>;
   // Create new document record
   const { data: docRow, error: docError } = await supabase
     .from('documents')

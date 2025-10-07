@@ -70,17 +70,17 @@ export interface Database {
       admin_settings: {
         Row: {
           id: number;
-          prompts: Json | null;
+          prompts: PromptSettings | null;
           active_doc_version: number | null;
         };
         Insert: {
           id: number;
-          prompts: Json | null;
+          prompts: PromptSettings | null;
           active_doc_version: number | null;
         };
         Update: {
           id?: number;
-          prompts?: Json | null;
+          prompts?: PromptSettings | null;
           active_doc_version?: number | null;
         };
       };
@@ -101,6 +101,18 @@ export interface Database {
           count?: number;
         };
       };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 }

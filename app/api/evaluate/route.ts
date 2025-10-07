@@ -9,6 +9,7 @@ import { runToolsAutomation } from '@/server/llm/toolsAutomation';
 import { isSupabaseConfigured } from '@/lib/env';
 import { getDemoUserFromCookies } from '@/lib/demoSession';
 import { createDemoEvaluation } from '@/lib/demoData';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Zod schema describing the expected shape of the request body. Additional
 // fields will be ignored and missing required fields will result in a 400.
@@ -71,27 +72,48 @@ export async function POST(req: NextRequest) {
   // fallback to the user-scoped client. This ensures that profile
   // creation and evaluation inserts succeed even when the anonymous key
   // cannot bypass RLS policies on its own.
-  const supabase = supabaseService ?? supabaseUser;
+  const supabase = (supabaseService ?? supabaseUser) as SupabaseClient<any>;
   // Ensure the authenticated user has a row in the profiles table. The
   // evaluations table enforces a foreign key to profiles.id, so inserting
-  // an evaluation without a corresponding profile row will fail. Use a
-  // service-level upsert to insert the profile if it does not exist.
-  await supabase
+  // an evaluation without a corresponding profile row will fail.
+  const {
+    data: profileRow,
+    error: profileError
+  } = await supabase
     .from('profiles')
-    .upsert({ id: user.id, email: user.email ?? null, role: 'user' }, { onConflict: 'id' });
+    .select('role, email')
+    .eq('id', user.id)
+    .maybeSingle<{ role: string | null; email: string | null }>();
+  if (profileError) {
+    console.error('Failed to load profile', profileError);
+    return NextResponse.json({ error: 'Failed to load profile' }, { status: 500 });
+  }
+  let role = profileRow?.role ?? 'user';
+  if (!profileRow) {
+    const { error: insertError } = await supabase.from('profiles').insert({
+      id: user.id,
+      email: user.email ?? null,
+      role
+    });
+    if (insertError) {
+      console.error('Failed to create profile', insertError);
+      return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
+    }
+  } else if (user.email && profileRow.email !== user.email) {
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ email: user.email })
+      .eq('id', user.id);
+    if (updateError) {
+      console.error('Failed to sync profile email', updateError);
+    }
+  }
   // Determine the start of the current day in Europe/Berlin. This ensures
   // rate limits reset at midnight Berlin time regardless of server locale.
   const now = new Date();
   const berlinTimeString = now.toLocaleString('en-US', { timeZone: 'Europe/Berlin' });
   const berlinDate = new Date(berlinTimeString);
   const startOfDay = new Date(Date.UTC(berlinDate.getUTCFullYear(), berlinDate.getUTCMonth(), berlinDate.getUTCDate()));
-  // Fetch the user's role. Default to 'user' when no profile row exists.
-  const { data: profileRow, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  const role = profileError || !profileRow ? 'user' : profileRow.role;
   // Determine today's date in Europe/Berlin for rate limiting.  The
   // date column in rate_limits stores only the day (YYYY-MM-DD).  We
   // generate a string using the Berlin time zone to correctly reset at
