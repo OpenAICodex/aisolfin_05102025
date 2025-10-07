@@ -1,0 +1,17 @@
+name: Notify downstream on push
+
+on:
+  push:
+    branches: [ main ]  # change if upstream uses a different default branch
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send repository_dispatch
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.DOWNSTREAM_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/jackallinone247/aisolfin_07102025/dispatches \
+            -d '{"event_type":"sync-upstream"}'
