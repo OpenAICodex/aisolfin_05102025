@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 interface EvaluationFormProps {
   demoMode?: boolean;
@@ -36,6 +36,30 @@ interface EvaluationResult {
 const timeOptions = ['< 15 min', '15–30 min', '30–60 min', '1–2 h', '> 2 h'];
 const frequencyOptions = ['täglich', 'mehrmals pro Woche', 'wöchentlich', 'monatlich', 'seltener'];
 const stakeholderOptions = ['mich', 'mein Team', 'meinen Chef', 'Kunden', 'andere'];
+
+const timeOptionMeta = [
+  { hours: 0.25, breakdown: '0.25 h (~15 min)' },
+  { hours: 0.5, breakdown: '0.5 h (~30 min)' },
+  { hours: 1, breakdown: '1 h' },
+  { hours: 1.5, breakdown: '1.5 h (~90 min)' },
+  { hours: 3, breakdown: '3 h (geschaetzt)' }
+] as const;
+
+const frequencyOptionMeta = [
+  { occurrencesPerYear: 260, breakdown: '52 Wochen * 5 Tage' },
+  { occurrencesPerYear: 156, breakdown: '52 Wochen * 3 Tage' },
+  { occurrencesPerYear: 52, breakdown: '52 Wochen' },
+  { occurrencesPerYear: 12, breakdown: '12 Monate' },
+  { occurrencesPerYear: 6, breakdown: '6 Ereignisse' }
+] as const;
+
+const stakeholderRateMeta = [
+  { hourlyRate: 35 },
+  { hourlyRate: 35 },
+  { hourlyRate: 65 },
+  { hourlyRate: 35 },
+  { hourlyRate: 40 }
+] as const;
 
 // Application categories and prefilled software options. These lists are
 // inspired by the original reference site. Feel free to extend or
@@ -83,6 +107,39 @@ export default function EvaluationForm({ demoMode = false }: EvaluationFormProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<EvaluationResult | null>(null);
+
+  const businessValueMeta = useMemo(() => {
+    const timeIdx = Math.max(timeOptions.indexOf(timeRequired), 0);
+    const frequencyIdx = Math.max(frequencyOptions.indexOf(frequency), 0);
+    const stakeholderIdx = Math.max(stakeholderOptions.indexOf(stakeholder), 0);
+
+    const timeInfo = timeOptionMeta[timeIdx] ?? timeOptionMeta[2];
+    const frequencyInfo = frequencyOptionMeta[frequencyIdx] ?? frequencyOptionMeta[2];
+    const stakeholderInfo = stakeholderRateMeta[stakeholderIdx] ?? stakeholderRateMeta[0];
+
+    const annualHoursRaw = frequencyInfo.occurrencesPerYear * timeInfo.hours;
+    const annualHours = Math.round(annualHoursRaw * 10) / 10;
+
+    const hoursFormatter = new Intl.NumberFormat('de-DE', {
+      minimumFractionDigits: annualHours % 1 === 0 ? 0 : 1,
+      maximumFractionDigits: 1
+    });
+    const formattedHours = hoursFormatter.format(annualHours);
+    const effortBreakdown = `${frequencyInfo.breakdown} * ${timeInfo.breakdown}`;
+    const currentEffort = `${formattedHours} Stunden/Jahr (${effortBreakdown})`;
+
+    const costFormatter = new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+    const totalCost = costFormatter.format(annualHoursRaw * stakeholderInfo.hourlyRate);
+    const hourlyRate = costFormatter.format(stakeholderInfo.hourlyRate);
+    const currentCost = `${totalCost} (${formattedHours} Std * ${hourlyRate})`;
+
+    return { currentEffort, currentCost };
+  }, [timeRequired, frequency, stakeholder]);
 
   /**
    * Advance to the next step. When arriving at the submission step
@@ -521,6 +578,14 @@ export default function EvaluationForm({ demoMode = false }: EvaluationFormProps
                     <span className="text-sm mt-1 text-gray-700">von 100</span>
                   </div>
                   <div className="flex-1">
+                    <div className="text-sm border border-black rounded-md p-3 bg-white mb-3">
+                      <p>
+                        <strong>Current Effort:</strong> {businessValueMeta.currentEffort}
+                      </p>
+                      <p className="mt-1">
+                        <strong>Current Cost:</strong> {businessValueMeta.currentCost}
+                      </p>
+                    </div>
                     <p className="text-sm bg-gray-100 border border-black rounded-md p-3">
                       {result.businessValue.narrative}
                     </p>
